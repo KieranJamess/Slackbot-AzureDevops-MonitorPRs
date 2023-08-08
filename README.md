@@ -7,7 +7,7 @@ This started as a small Go project to learn and build up my skills and knowledge
 This bot tracks any PRs in Azure Devops for any new comments, reviewers, reviewers changes and status in the PR. It also sends a message using a cron timer to each channel that has tracked PRs to notify the channel of any remaining PRs that are still active.
 ### The Idea
 Starting off the idea was just to have some notifactions for the bot to post messages in a thread to confirm when there was new comments in the PR - the bot kept growing with the more ideas I have, and you can see them at the top of the `main.go` script.
-![idea](assets\prIdea.png)
+![idea](assets/prIdea.png)
 ### Features
 - Message into slack per tracked PR per channel to alert the wider team
 - Further messages in relation to that PR to be sent as a thread message
