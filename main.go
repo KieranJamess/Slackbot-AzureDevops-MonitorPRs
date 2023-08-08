@@ -244,8 +244,8 @@ func handleSlackSlashCommand(w http.ResponseWriter, r *http.Request) {
 	prID := strings.TrimPrefix(prLink, prTemplate)
 	prID = strings.TrimSuffix(prID, "/")
 	prID = strings.TrimPrefix(prID, "/")
-	channelID := r.FormValue("channel_id")
 
+	channelID := r.FormValue("channel_id")
 	key := fmt.Sprintf("%s_%s", prID, channelID)
 	mutex.Lock()
 	if activeMonitoring[key] {
