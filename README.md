@@ -38,35 +38,51 @@ You will also need the OAUTH token from here
 When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed.
 ![initialMessage](assets/prInitialMessage.png)
 ### A Comment Has Been Made
-A notifaction is sent to the thread of the initial message, container all unique comment authors
+A notifaction is sent to the thread of the initial message, container **all unique comment authors**
 ![commentMessage](assets/prComment.png)
 ### PR Has Been Approved
-A notifaction is sent to the thread of the initial message, container all approving reviewers
+A notifaction is sent to the thread of the initial message, container **all approving reviewers**
 ![approvedMessage](assets/prApproved.png)
 ### PR Has Been Declined
-A notifaction is sent to the thread of the initial message, container all declining reviewers
+A notifaction is sent to the thread of the initial message, container **all declining reviewers**
 ![declinedMessage](assets/prDeclined.png)
 ### PR Has Been Approved & Declined
-A notifaction is sent to the thread of the initial message, container all declining & approving reviewers
+A notifaction is sent to the thread of the initial message, container **all declining & approving reviewers**
 ![approvedAndDeclinedMessage](assets/prApprovedAndDeclined.png)
 ### PR State Has Changed
-A notifaction for when the PR state is changed. Sends a notifaction to the thread if the PR is completed or abandoned. This only happens if the deleteFirstMessage var isn't true
+A notifaction for when the **PR state** is **changed**. Sends a notifaction to the thread if the PR is completed or abandoned. This only happens if the deleteFirstMessage var isn't true
 ![abandonedMessage](assets/prAddingMembersToTrackedList.png)
 ### Adding Member To Already Tracked PR
-This one is a little different. If the PR is already being tracked, it sends a emphermiral message to the requestee that it's already being tracked, but they will get further notifactions for that PR. We can see that they are now being mentioned in the thread.
+This one is a little different. If the PR is **already being tracked**, it sends a **emphermiral message** to the requestee that it's already being tracked, but they will get further notifactions for that PR. We can see that they are now being mentioned in the thread.
 ![alreadyTrackedMessage](assets/prAddingMembersToTrackedList.png)
-
+### What a Flow Could Look Like
+As we can see below, we have a PR which followed the flow
+- Kieran James **approves**
+- Kieran James **changes** to **declines**
+- Kieran James left a **comment**
+- KJ **Declines**
+- KJ and Kieran James **changes** vote to **Approves**
+- KJ and Kieran James **both** leave 1 **comment** each
+![workflow](assets/prApprovedChangedCommented.png)
 ## Console
-
+Section showcasing how the console works
 ## Code - Setup options
+Section for showing how to enable and use the options
 ### Delete Messages Once PR Isn't Active
 
 ### Cron For Summary Message
 
 ## Code - Functions
-
+Section for showcasing on each of the code functions
 ### main()
-
+```
+func main() {
+	http.HandleFunc("/slack/pr", handleSlackSlashCommand)
+	fmt.Println("[GLOBAL] Server listening on port 80...")
+	http.ListenAndServe(":80", nil)
+}
+```
+Calls and serves traffic based on the /slack/pr endpoint, hitting the `handleSlackSlashCommand` function
 ## What's next?
 - Containerisation of the application
 ## Disclaimers
