@@ -1,5 +1,49 @@
 
 # Slack Bot
+- [Slack Bot](#slack-bot)
+  - [Overview](#overview)
+    - [Intro](#intro)
+    - [The Idea](#the-idea)
+    - [Features](#features)
+  - [Slack bot Setup](#slack-bot-setup)
+    - [Basic Information](#basic-information)
+    - [Slash Commands](#slash-commands)
+    - [OAuth \& Permissions](#oauth--permissions)
+  - [Slack Notifactions](#slack-notifactions)
+    - [The Initial Message](#the-initial-message)
+    - [A Comment Has Been Made](#a-comment-has-been-made)
+    - [PR Has Been Approved](#pr-has-been-approved)
+    - [PR Has Been Declined](#pr-has-been-declined)
+    - [PR Has Been Approved \& Declined](#pr-has-been-approved--declined)
+    - [PR State Has Changed](#pr-state-has-changed)
+    - [Adding Member To Already Tracked PR](#adding-member-to-already-tracked-pr)
+    - [What a Flow Could Look Like](#what-a-flow-could-look-like)
+  - [Console](#console)
+    - [Starting The Application](#starting-the-application)
+    - [Tracking PR](#tracking-pr)
+    - [PR Has Changes](#pr-has-changes)
+    - [PR Deleting Messages](#pr-deleting-messages)
+  - [Code](#code)
+    - [Consts](#consts)
+    - [Vars](#vars)
+  - [Code - Setup options](#code---setup-options)
+    - [Delete Messages Once PR Isn't Active](#delete-messages-once-pr-isnt-active)
+    - [Cron For Summary Message](#cron-for-summary-message)
+  - [Code - Functions](#code---functions)
+    - [main()](#main)
+    - [func fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\[\]Comment, error)](#func-fetchcommentsfromazuredevopsazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-comment-error)
+    - [func getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\*PullRequest, error)](#func-getpullrequestazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-pullrequest-error)
+    - [func getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string)](#func-getpullrequeststatusazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-status-string)
+    - [func sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message\_ts string)](#func-sendslackmessageslackaccesstoken-channelid-message-messagets-userid-string-postephemeral-bool-message_ts-string)
+    - [func postActivePRsMessage(activePrs map\[string\]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#func-postactiveprsmessageactiveprs-mapstringbool-azuredevopsorganization-azuredevopsproject-repositoryname-string)
+    - [func startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#func-startcronazuredevopsorganization-azuredevopsproject-repositoryname-string)
+    - [handleSlackSlashCommand(w http.ResponseWriter, r \*http.Request)](#handleslackslashcommandw-httpresponsewriter-r-httprequest)
+    - [func reviewersToString(reviewers map\[string\]bool) string](#func-reviewerstostringreviewers-mapstringbool-string)
+    - [func deleteThreadMessages(slackAccessToken, channelID string, messages \[\]slack.Message) error](#func-deletethreadmessagesslackaccesstoken-channelid-string-messages-slackmessage-error)
+    - [func getThreadMessages(slackAccessToken, channelID, parentTimestamp string) (\[\]slack.Message, error)](#func-getthreadmessagesslackaccesstoken-channelid-parenttimestamp-string-slackmessage-error)
+    - [func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)](#func-monitorprazuredevopsorganization-azuredevopsproject-repositoryname-parentmessagets-prid-prlink-userid-channelid-string)
+  - [What's next?](#whats-next)
+  - [Disclaimers](#disclaimers)
 ## Overview
 ### Intro
 This started as a small Go project to learn and build up my skills and knowledge in Go.
@@ -65,10 +109,19 @@ As we can see below, we have a PR which followed the flow
 - KJ and Kieran James **both** leave 1 **comment** each
 ![workflow](assets/prApprovedChangedCommented.png)
 ## Console
-Section showcasing how the console works..
-
-
-
+For all functions, there is some **logging** to the **console**. All console messages relating to the monitor of each tracked PR is fixed with a prefix matching `<channel_id>-<pr_id>`
+### Starting The Application
+When you first start the application there is a global console message
+![consoleStart](assets/consoleStart.png)
+### Tracking PR
+WHen sending in a request, this is picked up via the application and logged. If it was job being tracked, this will also start the cron
+![consoleInitial](assets/consoleInitial.png)
+### PR Has Changes
+When a PR has changes, these are logged like below
+![consoleCommentAndApprovers](assets/consoleCommentsAndApprovers.png)
+### PR Deleting Messages
+Like above, these changes are logged
+![consoleDeletingMessages](assets/consoleDeletingMessages.png)
 ## Code
 ### Consts
 ```
@@ -113,7 +166,7 @@ Set the **deleteFirstMessage** to **True**
 ```
 cronTimer = "0 0 9 * * 1-5"
 ```
-Set cronTimer to a cron of your choosing.
+Set **cronTimer** to a cron of your choosing.
 ## Code - Functions
 Section for showcasing on each of the code functions
 ### main()
@@ -601,5 +654,6 @@ If any of the reviews have changed, send an updated list to the thread
 
 ## What's next?
 - Containerisation of the application
+- Helm chart creation? 
 ## Disclaimers
 This is my first GO project. I had never used Go before this project and primarily I use Powershell / Python.
