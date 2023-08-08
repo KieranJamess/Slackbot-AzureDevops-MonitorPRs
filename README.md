@@ -20,41 +20,41 @@ Starting off the idea was just to have some notifactions for the bot to post mes
 There's a few different items you will need to get this going
 ### Basic Information
 You will need a few things for the basics, but lets start of with the actual app name. I've called mine **Mario** as he will be supporting the platform team (and he's a platformer!).
-![slackBasics](assets\slackDetails.png)
+![slackBasics](assets/slackDetails.png)
 
 The other thing you will need from the basic information page is the **Token**
-![slackVerifactionToken](assets\slackVerifactionToken.png)
+![slackVerifactionToken](assets/slackVerifactionToken.png)
 ### Slash Commands
 All you need to do is setup a basic **/PR slash** command here
-![slackSlashCommand](assets\slackSlashCommand.png)
+![slackSlashCommand](assets/slackSlashCommand.png)
 ### OAuth & Permissions
 Lastly you will need to give your bot some specific scopes, these are **channels:history** and **chat:write**.
-![slackScopes](assets\slackScopes.png)
+![slackScopes](assets/slackScopes.png)
 
 You will also need the OAUTH token from here
-![slackOAUTHToken](assets\slackOAuthToken.png)
+![slackOAUTHToken](assets/slackOAuthToken.png)
 ## Slack Notifactions
 ### The Initial Message
 When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed.
-![initialMessage](assets\prInitialMessage.png)
+![initialMessage](assets/prInitialMessage.png)
 ### A Comment Has Been Made
 A notifaction is sent to the thread of the initial message, container all unique comment authors
-![commentMessage](assets\prComment.png)
+![commentMessage](assets/prComment.png)
 ### PR Has Been Approved
 A notifaction is sent to the thread of the initial message, container all approving reviewers
-![approvedMessage](assets\prApproved.png)
+![approvedMessage](assets/prApproved.png)
 ### PR Has Been Declined
 A notifaction is sent to the thread of the initial message, container all declining reviewers
-![declinedMessage](assets\prDeclined.png)
+![declinedMessage](assets/prDeclined.png)
 ### PR Has Been Approved & Declined
 A notifaction is sent to the thread of the initial message, container all declining & approving reviewers
-![approvedAndDeclinedMessage](assets\prApprovedAndDeclined.png)
+![approvedAndDeclinedMessage](assets/prApprovedAndDeclined.png)
 ### PR State Has Changed
 A notifaction for when the PR state is changed. Sends a notifaction to the thread if the PR is completed or abandoned. This only happens if the deleteFirstMessage var isn't true
-![abandonedMessage](assets\prAddingMembersToTrackedList.png)
+![abandonedMessage](assets/prAddingMembersToTrackedList.png)
 ### Adding Member To Already Tracked PR
 This one is a little different. If the PR is already being tracked, it sends a emphermiral message to the requestee that it's already being tracked, but they will get further notifactions for that PR. We can see that they are now being mentioned in the thread.
-![alreadyTrackedMessage](assets\prAddingMembersToTrackedList.png)
+![alreadyTrackedMessage](assets/prAddingMembersToTrackedList.png)
 
 ## Console
 
