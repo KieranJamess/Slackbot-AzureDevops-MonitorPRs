@@ -65,13 +65,55 @@ As we can see below, we have a PR which followed the flow
 - KJ and Kieran James **both** leave 1 **comment** each
 ![workflow](assets/prApprovedChangedCommented.png)
 ## Console
-Section showcasing how the console works
+Section showcasing how the console works..
+
+
+
+## Code
+### Consts
+```
+slackVerificationToken = ""
+slackAccessToken       = ""
+personalAccessToken    = ""
+
+cronTimer = "0 0 9 * * 1-5" // At 9AM, on a weekday
+
+deleteFirstMessage = false // Delete the first message with all the thread messages once PR is no longer active.
+```
+the consts constist of the slack tokens needed, the Azure Devops PAT, the cronTimer for the messages and the deleteFirstMessage bool
+- slackVerificationToken = Generated from the slack bot
+- slackAccessToken = Generated from the slack bot
+- personalAccessToken = Azure Devops PAT
+- cronTimer = Timer for posting the list of active PRs per channel
+- deleteFirstMessage = true/false to delete the message + thread messages once PR isn't active
+### Vars
+```
+var azureDevOpsOrganization string
+var azureDevOpsProject string
+var repositoryName string
+
+var activeMonitoring = make(map[string]bool) // key: "PRID_channelID", value: true/false
+var mutex sync.Mutex                         // Mutex for safe concurrent access to the map
+
+var cronOnce sync.Once
+var isCronRunning bool
+
+var interestedUsers = make(map[string][]string) // key: PRID, value: list of user IDs
+```
+Vars used within the code controlled / used later on
+
 ## Code - Setup options
 Section for showing how to enable and use the options
 ### Delete Messages Once PR Isn't Active
-
+```
+deleteFirstMessage = false
+```
+Set the **deleteFirstMessage** to **True**
 ### Cron For Summary Message
-
+```
+cronTimer = "0 0 9 * * 1-5"
+```
+Set cronTimer to a cron of your choosing.
 ## Code - Functions
 Section for showcasing on each of the code functions
 ### main()
