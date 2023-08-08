@@ -31,19 +31,20 @@
     - [Cron For Summary Message](#cron-for-summary-message)
   - [Code - Functions](#code---functions)
     - [main()](#main)
-    - [func fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\[\]Comment, error)](#func-fetchcommentsfromazuredevopsazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-comment-error)
-    - [func getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\*PullRequest, error)](#func-getpullrequestazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-pullrequest-error)
-    - [func getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string)](#func-getpullrequeststatusazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-status-string)
-    - [func sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message\_ts string)](#func-sendslackmessageslackaccesstoken-channelid-message-messagets-userid-string-postephemeral-bool-message_ts-string)
-    - [func postActivePRsMessage(activePrs map\[string\]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#func-postactiveprsmessageactiveprs-mapstringbool-azuredevopsorganization-azuredevopsproject-repositoryname-string)
-    - [func startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#func-startcronazuredevopsorganization-azuredevopsproject-repositoryname-string)
+    - [fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\[\]Comment, error)](#fetchcommentsfromazuredevopsazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-comment-error)
+    - [getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (\*PullRequest, error)](#getpullrequestazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-pullrequest-error)
+    - [getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string)](#getpullrequeststatusazuredevopsorganization-azuredevopsproject-repositoryname-prid-string-status-string)
+    - [sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message\_ts string)](#sendslackmessageslackaccesstoken-channelid-message-messagets-userid-string-postephemeral-bool-message_ts-string)
+    - [postActivePRsMessage(activePrs map\[string\]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#postactiveprsmessageactiveprs-mapstringbool-azuredevopsorganization-azuredevopsproject-repositoryname-string)
+    - [startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#startcronazuredevopsorganization-azuredevopsproject-repositoryname-string)
     - [handleSlackSlashCommand(w http.ResponseWriter, r \*http.Request)](#handleslackslashcommandw-httpresponsewriter-r-httprequest)
-    - [func reviewersToString(reviewers map\[string\]bool) string](#func-reviewerstostringreviewers-mapstringbool-string)
-    - [func deleteThreadMessages(slackAccessToken, channelID string, messages \[\]slack.Message) error](#func-deletethreadmessagesslackaccesstoken-channelid-string-messages-slackmessage-error)
-    - [func getThreadMessages(slackAccessToken, channelID, parentTimestamp string) (\[\]slack.Message, error)](#func-getthreadmessagesslackaccesstoken-channelid-parenttimestamp-string-slackmessage-error)
-    - [func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)](#func-monitorprazuredevopsorganization-azuredevopsproject-repositoryname-parentmessagets-prid-prlink-userid-channelid-string)
+    - [reviewersToString(reviewers map\[string\]bool) string](#reviewerstostringreviewers-mapstringbool-string)
+    - [deleteThreadMessages(slackAccessToken, channelID string, messages \[\]slack.Message) error](#deletethreadmessagesslackaccesstoken-channelid-string-messages-slackmessage-error)
+    - [getThreadMessages(slackAccessToken, channelID, parentTimestamp string) (\[\]slack.Message, error)](#getthreadmessagesslackaccesstoken-channelid-parenttimestamp-string-slackmessage-error)
+    - [monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)](#monitorprazuredevopsorganization-azuredevopsproject-repositoryname-parentmessagets-prid-prlink-userid-channelid-string)
   - [What's next?](#whats-next)
   - [Disclaimers](#disclaimers)
+
 ## Overview
 ### Intro
 This started as a small Go project to learn and build up my skills and knowledge in Go.
@@ -171,7 +172,7 @@ Set **cronTimer** to a cron of your choosing.
 Section for showcasing on each of the code functions
 ### main()
 ```
-func main() {
+main() {
 	http.HandleFunc("/slack/pr", handleSlackSlashCommand)
 	fmt.Println("[GLOBAL] Server listening on port 80...")
 	http.ListenAndServe(":80", nil)
@@ -179,7 +180,7 @@ func main() {
 ```
 Calls and serves traffic based on the /slack/pr endpoint, hitting the `handleSlackSlashCommand` function
 
-### func fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error) 
+### fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error) 
 ```
 azureDevOpsURL := fmt.Sprintf(
     "https://dev.azure.com/%s/%s/_apis/git/repositories/%s/pullRequests/%s/threads?api-version=6.1",
@@ -225,7 +226,7 @@ for _, thread := range commentResponse.Value {
 return comments, nil
 ```
 Retrieve all comments on the PR. Ensure that the comment retrieved isn't a system comment also
-### func getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (*PullRequest, error)
+### getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (*PullRequest, error)
 ```
 azureDevOpsURL := fmt.Sprintf(
     "https://dev.azure.com/%s/%s/_apis/git/repositories/%s/pullRequests/%s?api-version=6.1",
@@ -262,7 +263,7 @@ if err != nil {
 return &pr, nil
 ```
 Similar to the comments function, get the PR details 
-### func getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string) 
+### getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string) 
 ```
 pr, err := getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
 if err != nil {
@@ -275,7 +276,7 @@ return pr.Status
 ```
 Using the PR details, grab the PR status
 
-### func sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message_ts string)
+### sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message_ts string)
 ```
 api := slack.New(slackAccessToken)
 
@@ -296,7 +297,7 @@ if postEphemeral {
 }
 ```
 Setup API client, if **postEphemeral** is true, send a ephemeral message to the user (requires **userId** to be passed in), else send a standard message to the channel with the message passed in. Output the **message_ts** which is the message **timeStamp**
-### func postActivePRsMessage(activePrs map[string]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string) 
+### postActivePRsMessage(activePrs map[string]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string) 
 ```
 channelMessage := make(map[string]string)
 for key, value := range activePrs {
@@ -335,7 +336,7 @@ if len(channelMessage) > 0 {
 ```
 Takes the pool of **active PRs** (in this case, using the **activeMonitoring** map), split the key for each PR up to setup the PR links per channel. If the channel a count of more than 0, post the global message to each of the channels.
 
-### func startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)
+### startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)
 ```
 cron := cron.New(cron.WithSeconds())
 cron.AddFunc(cronTimer, func() {
@@ -437,7 +438,7 @@ go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parent
 ```
 Check if the **cron** is running. If it isn't, start it. Finally, **start a process to monitor the PR**.
 
-### func reviewersToString(reviewers map[string]bool) string 
+### reviewersToString(reviewers map[string]bool) string 
 ```
 reviewerList := make([]string, 0)
 for reviewer := range reviewers {
@@ -447,7 +448,7 @@ for reviewer := range reviewers {
 return strings.Join(reviewerList, ", ")
 ```
 Take in a reviewer map, and output a joined string list 
-### func deleteThreadMessages(slackAccessToken, channelID string, messages []slack.Message) error 
+### deleteThreadMessages(slackAccessToken, channelID string, messages []slack.Message) error 
 ```
 api := slack.New(slackAccessToken)
 for _, msg := range messages {
@@ -459,7 +460,7 @@ for _, msg := range messages {
 return nil
 ```
 Iterate through message IDs within a channel and delete them
-### func getThreadMessages(slackAccessToken, channelID, parentTimestamp string) ([]slack.Message, error) 
+### getThreadMessages(slackAccessToken, channelID, parentTimestamp string) ([]slack.Message, error) 
 ```
 	api := slack.New(slackAccessToken)
 
@@ -476,7 +477,7 @@ Iterate through message IDs within a channel and delete them
 ```
 Get all thread messages within a conversation using the channel ID and parent message timestamp. Output for use
 
-### func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)
+### monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)
 ```
 ticker := time.NewTicker(1 * time.Minute)
 
