@@ -249,15 +249,39 @@ func handleSlackSlashCommand(w http.ResponseWriter, r *http.Request) {
 	key := fmt.Sprintf("%s_%s", prID, channelID)
 	mutex.Lock()
 	if activeMonitoring[key] {
-		// PR is already being monitored, add user to interested users
+		// PR is already being monitored, add user to interested users if not already added
+		userAlreadyInterested := false
+		for _, userID := range interestedUsers[prID] {
+			if userID == r.FormValue("user_id") {
+				userAlreadyInterested = true
+				fmt.Println("Submitted from:", r.FormValue("user_name"), "\nChannel: ", r.FormValue("channel_name"), "/", r.FormValue("channel_id"), "\nPR is already being tracked by user...\n-------------------")
+				w.Write([]byte("You are already tracking this PR"))
+				return
+			}
+		}
+
+		if !userAlreadyInterested {
+			interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+			w.Write([]byte("This PR is already being tracked. You're now interested in this PR, and will be notified of updates."))
+		}
+
 		fmt.Println("Submitted from:", r.FormValue("user_name"), "\nChannel: ", r.FormValue("channel_name"), "/", r.FormValue("channel_id"), "\nPR is already being monitored, attempting to add user to monitoring list...\n-------------------")
-		interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+
 		mutex.Unlock()
 		w.Write([]byte("This PR is already being tracked. You're now interested in this PR, and will be notified of updates.")) // Sending a link to the inital message would be cool
 		return
 	} else {
 		// Add the first requestee as interested in the PR
-		interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+		userAlreadyInterested := false
+		for _, userID := range interestedUsers[prID] {
+			if userID == r.FormValue("user_id") {
+				userAlreadyInterested = true
+			}
+		}
+
+		if !userAlreadyInterested {
+			interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+		}
 
 		// Mark the PR monitoring as active for this PR and channel
 		activeMonitoring[key] = true

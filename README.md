@@ -389,25 +389,50 @@ key := fmt.Sprintf("%s_%s", prID, channelID)
 Set the **key** for the locking system 
 ```
 if activeMonitoring[key] {
-    // PR is already being monitored, add user to interested users
+    // PR is already being monitored, add user to interested users if not already added
+    userAlreadyInterested := false
+    for _, userID := range interestedUsers[prID] {
+        if userID == r.FormValue("user_id") {
+            userAlreadyInterested = true
+            fmt.Println("Submitted from:", r.FormValue("user_name"), "\nChannel: ", r.FormValue("channel_name"), "/", r.FormValue("channel_id"), "\nPR is already being tracked by user...\n-------------------")
+            w.Write([]byte("You are already tracking this PR"))
+            return
+        }
+    }
+
+    if !userAlreadyInterested {
+        interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+        w.Write([]byte("This PR is already being tracked. You're now interested in this PR, and will be notified of updates."))
+    }
+
     fmt.Println("Submitted from:", r.FormValue("user_name"), "\nChannel: ", r.FormValue("channel_name"), "/", r.FormValue("channel_id"), "\nPR is already being monitored, attempting to add user to monitoring list...\n-------------------")
-    interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+
     mutex.Unlock()
     w.Write([]byte("This PR is already being tracked. You're now interested in this PR, and will be notified of updates.")) // Sending a link to the inital message would be cool
     return
 }
 ```
-If the key already exists in the **activeMonitoring** map (The PR is already being tracked), add user to the **interestedUsers** map, and send **ephemeral** **message** back to user to confirm
+If the key already exists in the **activeMonitoring** map (The PR is already being tracked), add user to the **interestedUsers** map, and send **ephemeral** **message** back to user to confirm. If the same user tracks the PR, dont add them to the list.
 ```
 ELSE: 
-interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+userAlreadyInterested := false
+for _, userID := range interestedUsers[prID] {
+    if userID == r.FormValue("user_id") {
+        userAlreadyInterested = true
+    }
+}
+
+if !userAlreadyInterested {
+    interestedUsers[prID] = append(interestedUsers[prID], r.FormValue("user_id"))
+}
+
 pr, err := getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
 if err != nil {
     fmt.Println("Error:", err)
     return
 }
 ```
-Here the PR wont be tracked. Add the requstee to the **interestedUsers**, and get the **PR information**
+Here the PR will be tracked. Add the requstee to the **interestedUsers**, and get the **PR information**. If the user has is already tracking the PR, allow the user to keep tracking the PR as it will be in a different channel.
 ```
 if getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID) != "active" {
     // Send message back to slack only visible to user to alert the user that PR isnt active.
