@@ -19,6 +19,15 @@
 // - Only check unresolved comments. Do we message the comment author that they've had responses? How do we link Azure Devops authers back to slack?
 // - A /bump command to push a notifaction to the channel containing all your PRs
 // - functionality around comparing comments. If the author has responded to the new comment, dont alert.
+// - Add automatic PRs to be posted to a channel through Azure Devops Webhooks
+// 		-  Get project using ID from resource > repo > project. Use ID https://dev.azure.com/kieranjamess/_apis/projects/<ID> and check name. If name matches key, move on
+//		-  If the name matches, get the PRID from resource > repo > pullRequestId, get the userID from key.WhoToMessage and channel from key.ChannelId
+//		-  Send a message to channel ID, that PR has been created by DisplayName.FirstName. Add PR to activePrs and start the go process
+// 		-  Message should look somewhat like "@<WhoToMessage> A new PR <PR_TITLE>|<Link> has been created in <key> by <FirstName>//"""
+// 		-  Add a catch on eventType for webhook != "git.pullrequest.created"
+//	    -  Add an option to allow an array of repos to get sent to an array of channels. So repo1,repo2 = channel1. Repo3, repo4 = channel2 and all other repos within project goes to channel 5
+// 		-  Add support if the automatic_prs.json file is missing, to continue
+// - Add functions to check if the PR has a build. Post build results to slack.
 
 // Not Possible Ideas
 // - Add a thread message if the PR is ready to be merged ---- NOT POSSIBLE (if its just approvers, the merge status is still 'succeeded' even if not all people have approved)
@@ -31,12 +40,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 	"github.com/slack-go/slack"
+	"github.com/tkanos/gonfig"
 )
 
 const (
@@ -58,8 +70,33 @@ var mutex sync.Mutex                         // Mutex for safe concurrent access
 
 var cronOnce sync.Once
 var isCronRunning bool
-
 var interestedUsers = make(map[string][]string) // key: PRID, value: list of user IDs
+
+type WebhookData struct {
+	Resource struct {
+		Repository struct {
+			Project struct {
+				Name string `json:"name"`
+			} `json:"project"`
+			WebURL string `json:"webUrl"`
+			Name   string `json:"name"`
+		} `json:"repository"`
+		PullRequestID int    `json:"pullRequestId"`
+		PrTitle       string `json:"title"`
+		CreatedBy     struct {
+			DisplayName string `json:"displayName"`
+		} `json:"createdBy"`
+	} `json:"resource"`
+}
+
+type AutomaticPrMessages struct {
+	Projects map[string]ProjectInfo `json:"AutomaticPrMessages"`
+}
+
+type ProjectInfo struct {
+	ChannelId   string `json:"ChannelId"`
+	SlackUserID string `json:"slack_user_id"`
+}
 
 type Author struct {
 	DisplayName string `json:"displayName"`
@@ -268,7 +305,6 @@ func handleSlackSlashCommand(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Submitted from:", r.FormValue("user_name"), "\nChannel: ", r.FormValue("channel_name"), "/", r.FormValue("channel_id"), "\nPR is already being monitored, attempting to add user to monitoring list...\n-------------------")
 
 		mutex.Unlock()
-		w.Write([]byte("This PR is already being tracked. You're now interested in this PR, and will be notified of updates.")) // Sending a link to the inital message would be cool
 		return
 	} else {
 		// Add the first requestee as interested in the PR
@@ -589,7 +625,101 @@ func reviewersToString(reviewers map[string]bool) string {
 	return strings.Join(reviewerList, ", ")
 }
 
+func handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configuration AutomaticPrMessages) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var data WebhookData
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
+		return
+	}
+
+	//fmt.Printf("WebhookData: %+v\n", data)
+	w.WriteHeader(http.StatusOK)
+
+	// Extract the desired information
+	fmt.Println("[GLOBAL] Received webhook from Azure Devops matching Project:", data.Resource.Repository.Project)
+	projectName := data.Resource.Repository.Project.Name
+
+	// Iterate through the project keys and check if the project name matches
+	for key, project := range configuration.Projects {
+		if projectName == key {
+			fmt.Printf("[GLOBAL] Project name matched with %s: %+v\n", key, project)
+			parts := strings.Split(data.Resource.Repository.WebURL, "/")
+			azureDevOpsOrganization := parts[3]
+			azureDevOpsProject := parts[4]
+			repositoryName := parts[6]
+
+			prID := strconv.Itoa(data.Resource.PullRequestID)
+			channelId := project.ChannelId
+			userId := project.SlackUserID
+			key := fmt.Sprintf("%s_%s", prID, channelId)
+			mutex.Lock()
+			activeMonitoring[key] = true
+			mutex.Unlock()
+
+			userAlreadyInterested := false
+			for _, user_ID := range interestedUsers[prID] {
+				if user_ID == userId {
+					userAlreadyInterested = true
+				}
+			}
+
+			if !userAlreadyInterested {
+				interestedUsers[prID] = append(interestedUsers[prID], userId)
+			}
+
+			prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
+			firstMessage := fmt.Sprintf("<@%s> New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+				userId,
+				prLink,
+				data.Resource.PrTitle,
+				projectName,
+				data.Resource.Repository.Name,
+				data.Resource.CreatedBy.DisplayName,
+			)
+			parentMessageTs := sendSlackMessage(slackAccessToken, channelId, firstMessage, "", "", false)
+
+			// Only start cron if it's not running.
+			if !isCronRunning {
+				cronOnce.Do(func() {
+					startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName)
+				})
+			}
+
+			// loop until PR isn't active anymore
+			go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId)
+		}
+	}
+}
+
 func main() {
+	configuration := AutomaticPrMessages{}
+	err := gonfig.GetConf("automatic_prs.json", &configuration)
+	if err != nil {
+		fmt.Println("Error loading configuration:", err)
+		os.Exit(1)
+	}
+
+	if len(configuration.Projects) > 0 {
+		fmt.Println("-------------------\n[GLOBAL] Automatic PR configuration below")
+		for key, value := range configuration.Projects {
+			fmt.Println("-------------------\nProject:", key)
+			fmt.Println("ChannelId:", value.ChannelId)
+			fmt.Println("SlackUserID:", value.SlackUserID)
+		}
+		fmt.Println("-------------------")
+	} else {
+		fmt.Println("[GLOBAL] No automatic PR configuration")
+	}
+
+	http.HandleFunc("/azuredevops", func(w http.ResponseWriter, r *http.Request) {
+		handleAzureDevopsWebhook(w, r, configuration)
+	})
+
 	http.HandleFunc("/slack/pr", handleSlackSlashCommand)
 	fmt.Println("[GLOBAL] Server listening on port 80...")
 	http.ListenAndServe(":80", nil)

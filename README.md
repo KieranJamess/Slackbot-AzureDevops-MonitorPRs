@@ -61,6 +61,7 @@ Starting off the idea was just to have some notifactions for the bot to post mes
 - Notifactions on any new reviewers, or reviewers changing their review
 - Delete all thread messages + parent message once PR is no longer active (if desired)
 - If a user has requested to track a PR that is already being tracked, it will @ them in slack with any new updates
+- Automically track PRs created via AzureDevops webhooks per project
 ## Slack bot Setup
 There's a few different items you will need to get this going
 ### Basic Information
@@ -78,6 +79,18 @@ Lastly you will need to give your bot some specific scopes, these are **channels
 
 You will also need the OAUTH token from here
 ![slackOAUTHToken](assets/slackOAuthToken.png)
+## Azure Devops Webhook Setup
+### Do You Need This?
+You only need this if you want to use the `automatic_prs.json` file to automatically pick up in PRs from each project.
+### Setting up your webhook
+Go to your project > select **settings** > **service hooks** > **create a new subscription**
+![azureDevopsWebhooksAdd](assets/azureDevopsWebhooksAdd.png)
+Select **webhooks**
+![azureDevopsWebhooksAdd2](assets/azureDevopsWebhooksAdd2.png)
+Set your trigger on PR Created and customize here if you wish
+![azureDevopsWebhooksAdd3](assets/azureDevopsWebhooksAdd3.png)
+Set the URL to the **webhookUrl/azuredevops**
+![azureDevopsWebhooksAdd4](assets/azureDevopsWebhooksAdd4.png)
 ## Slack Notifactions
 ### The Initial Message
 When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed.
@@ -123,6 +136,15 @@ When a PR has changes, these are logged like below
 ### PR Deleting Messages
 Like above, these changes are logged
 ![consoleDeletingMessages](assets/consoleDeletingMessages.png)
+### Automatic PR Setup
+We can see the jobs that we want to be automatically picked up
+![consoleAutomaicPrs](assets/consoleAutomaticPrs.png)
+### PR Automatically Added Via Webhook
+Here we can see the webhook getting picked up by the application and pushed into being monitored
+![consoleAutomaicPrsStart](assets/consoleAutomicPrsStart.png)
+### No Automatic Jobs
+When our json file is empty, this is what we can expect
+![consoleNoAutomaicPrs](assets/consoleNoAutomicPrs.png)
 ## Code
 ### Consts
 ```
@@ -162,23 +184,60 @@ Section for showing how to enable and use the options
 ```
 deleteFirstMessage = false
 ```
-Set the **deleteFirstMessage** to **True**
+Set the **deleteFirstMessage** to **True**. This will delete the parent message, and all related thread messages once a PR is no longer active
 ### Cron For Summary Message
 ```
 cronTimer = "0 0 9 * * 1-5"
 ```
-Set **cronTimer** to a cron of your choosing.
+Set **cronTimer** to a cron of your choosing to post all the remaining active PRs per channel
+### Automatic PR Messages Per Project
+```
+{
+    "AutomaticPrMessages": {
+        "AzureDevopsProjectName": {
+            "ChannelId": "SlackChannelId",
+            "slack_user_id": "SlackUserOrGroupId"
+        },
+        "Go": {
+            "ChannelId": "C05M28DMM43",
+            "slack_user_id": "U05L7M4L939"
+        }
+    }
+}
+```
+Use the `automatic_prs.json` file to setup the application to post messages to a slack channel automatically and track that way. This will require the Azure Devops webhook to be setup also! If you wish to not use this file, just keep the contents completely empty.
 ## Code - Functions
 Section for showcasing on each of the code functions
 ### main()
 ```
-main() {
-	http.HandleFunc("/slack/pr", handleSlackSlashCommand)
-	fmt.Println("[GLOBAL] Server listening on port 80...")
-	http.ListenAndServe(":80", nil)
+configuration := AutomaticPrMessages{}
+err := gonfig.GetConf("automatic_prs.json", &configuration)
+if err != nil {
+    fmt.Println("Error loading configuration:", err)
+    os.Exit(1)
 }
+
+if len(configuration.Projects) > 0 {
+    fmt.Println("-------------------\n[GLOBAL] Automatic PR configuration below")
+    for key, value := range configuration.Projects {
+        fmt.Println("-------------------\nProject:", key)
+        fmt.Println("ChannelId:", value.ChannelId)
+        fmt.Println("SlackUserID:", value.SlackUserID)
+    }
+    fmt.Println("-------------------")
+} else {
+    fmt.Println("[GLOBAL] No automatic PR configuration")
+}
+
+http.HandleFunc("/azuredevops", func(w http.ResponseWriter, r *http.Request) {
+    handleAzureDevpopsWebhook(w, r, configuration)
+})
+
+http.HandleFunc("/slack/pr", handleSlackSlashCommand)
+fmt.Println("[GLOBAL] Server listening on port 80...")
+http.ListenAndServe(":80", nil)
 ```
-Calls and serves traffic based on the /slack/pr endpoint, hitting the `handleSlackSlashCommand` function
+Calls and serves traffic based on the /slack/pr, and /azuredevops endpoint. This also calls the relvant function hitting the `handleSlackSlashCommand` and `handleAzureDevopsWebhooks`. This also opens and scans for any automatic PRs in the `automatic_prs.json` file.
 
 ### fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error) 
 ```
@@ -462,6 +521,81 @@ if !isCronRunning {
 go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("user_id"), r.FormValue("channel_id"))
 ```
 Check if the **cron** is running. If it isn't, start it. Finally, **start a process to monitor the PR**.
+### handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configuration AutomaticPrMessages)
+```
+if r.Method != http.MethodPost {
+    http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+    return
+}
+
+var data WebhookData
+if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+    http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
+    return
+}
+
+//fmt.Printf("WebhookData: %+v\n", data)
+w.WriteHeader(http.StatusOK)
+
+// Extract the desired information
+fmt.Println("[GLOBAL] Received webhook from Azure Devops matching Project:", data.Resource.Repository.Project)
+projectName := data.Resource.Repository.Project.Name
+```
+Ensure webhook is received correct and confirm what log what project the webhook came from.
+```
+for key, project := range configuration.Projects {
+		if projectName == key {
+			fmt.Printf("[GLOBAL] Project name matched with %s: %+v\n", key, project)
+			parts := strings.Split(data.Resource.Repository.WebURL, "/")
+			azureDevOpsOrganization := parts[3]
+			azureDevOpsProject := parts[4]
+			repositoryName := parts[6]
+            ... }
+        ...}
+```
+Grab the webURL from the webhook containing the repo URL, and grab the needed variables azureDevOpsOrganization, azureDevOpsProject and repositoryName from that
+```
+prID := strconv.Itoa(data.Resource.PullRequestID)
+channelId := project.ChannelId
+userId := project.SlackUserID
+key := fmt.Sprintf("%s_%s", prID, channelId)
+mutex.Lock()
+activeMonitoring[key] = true
+mutex.Unlock()
+
+userAlreadyInterested := false
+for _, user_ID := range interestedUsers[prID] {
+    if user_ID == userId {
+        userAlreadyInterested = true
+    }
+}
+
+if !userAlreadyInterested {
+    interestedUsers[prID] = append(interestedUsers[prID], userId)
+}
+
+prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
+firstMessage := fmt.Sprintf("<@%s> New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+    userId,
+    prLink,
+    data.Resource.PrTitle,
+    projectName,
+    data.Resource.Repository.Name,
+    data.Resource.CreatedBy.DisplayName,
+)
+parentMessageTs := sendSlackMessage(slackAccessToken, channelId, firstMessage, "", "", false)
+
+// Only start cron if it's not running.
+if !isCronRunning {
+    cronOnce.Do(func() {
+        startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName)
+    })
+}
+
+// loop until PR isn't active anymore
+go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId)
+```
+Setup the variables needed for the message into the channel. This will grab the user_id and channel_id from the JSON file matching on the project name. It will add the user into the userAlreadyInterested map to ensure they can't re-add it and start monitoring the PR
 
 ### reviewersToString(reviewers map[string]bool) string 
 ```
