@@ -93,7 +93,7 @@ You only need this if you want to use the `automatic_prs.json` file to automatic
 Go to your project > select **settings** > **service hooks** > **create a new subscription**
 ![azureDevopsWebhooksAdd](assets/azureDevopsWebhooksAdd.png)
 
-Select **webhooks**
+Select **webhooks** from the options presented
 ![azureDevopsWebhooksAdd2](assets/azureDevopsWebhooksAdd2.png)
 
 Set your trigger on PR Created and customize here if you wish
