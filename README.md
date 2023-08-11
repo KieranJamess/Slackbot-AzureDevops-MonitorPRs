@@ -12,6 +12,7 @@
     + [Setting up your webhook](#setting-up-your-webhook)
   * [Slack Notifactions](#slack-notifactions)
     + [The Initial Message](#the-initial-message)
+    + [Automatic PR Message](#automatic-pr-message)
     + [A Comment Has Been Made](#a-comment-has-been-made)
     + [PR Has Been Approved](#pr-has-been-approved)
     + [PR Has Been Declined](#pr-has-been-declined)
@@ -104,8 +105,11 @@ Set the URL to the **webhookUrl/azuredevops**
 
 ## Slack Notifactions
 ### The Initial Message
-When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed.
+When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed
 ![initialMessage](assets/prInitialMessage.png)
+### Automatic PR Message
+If the PR has automatically been picked up by an Azure Webhook, this is what the slack message will look like
+![initialMessage](assets/slackAutomaticPr.png)
 ### A Comment Has Been Made
 A notifaction is sent to the thread of the initial message, container **all unique comment authors**
 ![commentMessage](assets/prComment.png)
