@@ -1,12 +1,18 @@
 {
     "AutomaticPrMessages": {
         "AzureDevopsProjectName": {
-            "ChannelId": "C05LMF2F6DD",
-            "slack_user_id": "U05L7M4L939"
+            "ChannelIds": ["C05LMF2F6DD"],
+            "SlackUserIds": ["U05L7M4L939"],
+            "SpecificRepos": {
+                "MyRepoName":{
+                    "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
+                    "SlackUserIds":[""]
+                }
+            }
         },
         "Go": {
-            "ChannelId": "C05M28DMM43",
-            "slack_user_id": "U05L7M4L939"
+            "ChannelIds": ["C05M28DMM43"],
+            "SlackUserIds": ["U05L7M4L939","UD1QZGTSS"]
         }
     }
 }

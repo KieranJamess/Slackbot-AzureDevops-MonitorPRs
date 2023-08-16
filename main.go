@@ -20,14 +20,16 @@
 // - A /bump command to push a notifaction to the channel containing all your PRs
 // - functionality around comparing comments. If the author has responded to the new comment, dont alert.
 // - Add automatic PRs to be posted to a channel through Azure Devops Webhooks
-// 		-  Get project using ID from resource > repo > project. Use ID https://dev.azure.com/kieranjamess/_apis/projects/<ID> and check name. If name matches key, move on
-//		-  If the name matches, get the PRID from resource > repo > pullRequestId, get the userID from key.WhoToMessage and channel from key.ChannelId
-//		-  Send a message to channel ID, that PR has been created by DisplayName.FirstName. Add PR to activePrs and start the go process
-// 		-  Message should look somewhat like "@<WhoToMessage> A new PR <PR_TITLE>|<Link> has been created in <key> by <FirstName>//"""
+// 		-  Get project using ID from resource > repo > project. Use ID https://dev.azure.com/kieranjamess/_apis/projects/<ID> and check name. If name matches key, move on ----- DONE
+//		-  If the name matches, get the PRID from resource > repo > pullRequestId, get the userID from key.WhoToMessage and channel from key.ChannelId ----- DONE
+//		-  Send a message to channel ID, that PR has been created by DisplayName.FirstName. Add PR to activePrs and start the go process ----- DONE
+// 		-  Message should look somewhat like "@<WhoToMessage> A new PR <PR_TITLE>|<Link> has been created in <key> by <FirstName>//""" ----- DONE
 // 		-  Add a catch on eventType for webhook != "git.pullrequest.created"
-//	    -  Add an option to allow an array of repos to get sent to an array of channels. So repo1,repo2 = channel1. Repo3, repo4 = channel2 and all other repos within project goes to channel 5
+//	    -  Add an option to allow an array of repos to get sent to an array of channels. So repo1,repo2 = channel1. Repo3, repo4 = channel2 and all other repos within project goes to channel 5 ---- DONE
 // 		-  Add support if the automatic_prs.json file is missing, to continue
 // - Add functions to check if the PR has a build. Post build results to slack.
+// - Support no mention lists if no one should be mentioned ---- DONE
+// - Add a /track command on the tread messages to add user to the updates
 
 // Not Possible Ideas
 // - Add a thread message if the PR is ready to be merged ---- NOT POSSIBLE (if its just approvers, the merge status is still 'succeeded' even if not all people have approved)
@@ -94,8 +96,14 @@ type AutomaticPrMessages struct {
 }
 
 type ProjectInfo struct {
-	ChannelId   string `json:"ChannelId"`
-	SlackUserID string `json:"slack_user_id"`
+	ChannelIds    []string                 `json:"ChannelIds"`
+	SlackUserIDs  []string                 `json:"SlackUserIds"`
+	SpecificRepos map[string]SpecificRepos `json:"SpecificRepos"`
+}
+
+type SpecificRepos struct {
+	ChannelIds   []string `json:"ChannelIds"`
+	SlackUserIDs []string `json:"SlackUserIds"`
 }
 
 type Author struct {
@@ -356,11 +364,11 @@ func handleSlackSlashCommand(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// loop until PR isn't active anymore
-		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("user_id"), r.FormValue("channel_id"))
+		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("channel_id"))
 	}
 }
 
-func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string) {
+func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, channelId string) {
 	// Set a timer for each minute
 	ticker := time.NewTicker(1 * time.Minute)
 
@@ -389,6 +397,7 @@ func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, pare
 		mentionText := ""
 		for _, userID := range interestedUserIDs {
 			mentionText += fmt.Sprintf("<@%s>", userID)
+			mentionText = strings.ReplaceAll(mentionText, "<@>", "")
 		}
 
 		fmt.Println(prefix, "Checking for changes")
@@ -637,7 +646,6 @@ func handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configurat
 		return
 	}
 
-	//fmt.Printf("WebhookData: %+v\n", data)
 	w.WriteHeader(http.StatusOK)
 
 	// Extract the desired information
@@ -652,48 +660,83 @@ func handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configurat
 			azureDevOpsOrganization := parts[3]
 			azureDevOpsProject := parts[4]
 			repositoryName := parts[6]
-
 			prID := strconv.Itoa(data.Resource.PullRequestID)
-			channelId := project.ChannelId
-			userId := project.SlackUserID
-			key := fmt.Sprintf("%s_%s", prID, channelId)
-			mutex.Lock()
-			activeMonitoring[key] = true
-			mutex.Unlock()
+			prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
 
+			if len(project.SpecificRepos) == 0 {
+				azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+			} else {
+				for key, repo := range project.SpecificRepos {
+					if key == repositoryName {
+						azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+					} else {
+						azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+					}
+				}
+			}
+		}
+	}
+}
+
+func azureWebhookIterateOverChannelsAndUsers(channels []string, users []string, azureDevOpsOrganization string, azureDevOpsProject string, prlink string, prtitle string, prid string, projectname string, reponame string, createdby string) {
+	mentions := makeMentionList(users)
+	for _, channel := range channels {
+		key := fmt.Sprintf("%s_%s", prid, channel)
+		mutex.Lock()
+		activeMonitoring[key] = true
+		mutex.Unlock()
+
+		for _, user := range users {
 			userAlreadyInterested := false
-			for _, user_ID := range interestedUsers[prID] {
-				if user_ID == userId {
+			for _, user_ID := range interestedUsers[prid] {
+				if user_ID == user {
 					userAlreadyInterested = true
 				}
 			}
 
 			if !userAlreadyInterested {
-				interestedUsers[prID] = append(interestedUsers[prID], userId)
+				interestedUsers[prid] = append(interestedUsers[prid], user)
 			}
-
-			prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
-			firstMessage := fmt.Sprintf("<@%s> New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
-				userId,
-				prLink,
-				data.Resource.PrTitle,
-				projectName,
-				data.Resource.Repository.Name,
-				data.Resource.CreatedBy.DisplayName,
-			)
-			parentMessageTs := sendSlackMessage(slackAccessToken, channelId, firstMessage, "", "", false)
-
-			// Only start cron if it's not running.
-			if !isCronRunning {
-				cronOnce.Do(func() {
-					startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName)
-				})
-			}
-
-			// loop until PR isn't active anymore
-			go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId)
 		}
+		var firstmessage string
+		if mentions == "" {
+			firstmessage = fmt.Sprintf("%s New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+				mentions,
+				prlink,
+				prtitle,
+				projectname,
+				reponame,
+				createdby,
+			)
+		} else {
+			firstmessage = fmt.Sprintf("New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+				prlink,
+				prtitle,
+				projectname,
+				reponame,
+				createdby,
+			)
+		}
+
+		parentMessageTs := sendSlackMessage(slackAccessToken, channel, firstmessage, "", "", false)
+
+		if !isCronRunning {
+			cronOnce.Do(func() {
+				startCron(azureDevOpsOrganization, azureDevOpsProject, reponame)
+			})
+		}
+
+		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, reponame, parentMessageTs, prid, prlink, channel)
 	}
+}
+
+func makeMentionList(users []string) string {
+	var list strings.Builder
+	for _, user := range users {
+		user = fmt.Sprintf("<@%s>", user)
+		list.WriteString(user)
+	}
+	return list.String()
 }
 
 func main() {
@@ -708,8 +751,14 @@ func main() {
 		fmt.Println("-------------------\n[GLOBAL] Automatic PR configuration below")
 		for key, value := range configuration.Projects {
 			fmt.Println("-------------------\nProject:", key)
-			fmt.Println("ChannelId:", value.ChannelId)
-			fmt.Println("SlackUserID:", value.SlackUserID)
+			fmt.Println("ChannelIds:", value.ChannelIds)
+			fmt.Println("SlackUserIDs:", value.SlackUserIDs)
+			for key, value := range value.SpecificRepos {
+				fmt.Println("Repo:", key)
+				fmt.Println("	ChannelIds:", value.ChannelIds)
+				fmt.Println("	SlackUserIds:", value.SlackUserIDs)
+			}
+
 		}
 		fmt.Println("-------------------")
 	} else {

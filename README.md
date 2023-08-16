@@ -1,57 +1,58 @@
-- [Slack Bot](#slack-bot)
-  * [Overview](#overview)
-    + [Intro](#intro)
-    + [The Idea](#the-idea)
-    + [Features](#features)
-  * [Slack bot Setup](#slack-bot-setup)
-    + [Basic Information](#basic-information)
-    + [Slash Commands](#slash-commands)
-    + [OAuth & Permissions](#oauth---permissions)
-  * [Azure Devops Webhook Setup](#azure-devops-webhook-setup)
-    + [Do You Need This?](#do-you-need-this-)
-    + [Setting up your webhook](#setting-up-your-webhook)
-  * [Slack Notifactions](#slack-notifactions)
-    + [The Initial Message](#the-initial-message)
-    + [Automatic PR Message](#automatic-pr-message)
-    + [A Comment Has Been Made](#a-comment-has-been-made)
-    + [PR Has Been Approved](#pr-has-been-approved)
-    + [PR Has Been Declined](#pr-has-been-declined)
-    + [PR Has Been Approved & Declined](#pr-has-been-approved---declined)
-    + [PR State Has Changed](#pr-state-has-changed)
-    + [Adding Member To Already Tracked PR](#adding-member-to-already-tracked-pr)
-    + [What a Flow Could Look Like](#what-a-flow-could-look-like)
-  * [Console](#console)
-    + [Starting The Application](#starting-the-application)
-    + [Tracking PR](#tracking-pr)
-    + [PR Has Changes](#pr-has-changes)
-    + [PR Deleting Messages](#pr-deleting-messages)
-    + [Automatic PR Setup](#automatic-pr-setup)
-    + [PR Automatically Added Via Webhook](#pr-automatically-added-via-webhook)
-    + [No Automatic Jobs](#no-automatic-jobs)
-  * [Code](#code)
-    + [Consts](#consts)
-    + [Vars](#vars)
-  * [Code - Setup options](#code---setup-options)
-    + [Delete Messages Once PR Isn't Active](#delete-messages-once-pr-isn-t-active)
-    + [Cron For Summary Message](#cron-for-summary-message)
-    + [Automatic PR Messages Per Project](#automatic-pr-messages-per-project)
-  * [Code - Functions](#code---functions)
-    + [main()](#main--)
-    + [fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error)](#fetchcommentsfromazuredevops-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string-----comment--error-)
-    + [getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (*PullRequest, error)](#getpullrequest-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string----pullrequest--error-)
-    + [getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string)](#getpullrequeststatus-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string---status-string-)
-    + [sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message_ts string)](#sendslackmessage-slackaccesstoken--channelid--message--messagets--userid-string--postephemeral-bool---message-ts-string-)
-    + [postActivePRsMessage(activePrs map[string]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#postactiveprsmessage-activeprs-map-string-bool--azuredevopsorganization--azuredevopsproject--repositoryname-string-)
-    + [startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#startcron-azuredevopsorganization--azuredevopsproject--repositoryname-string-)
-    + [handleSlackSlashCommand(w http.ResponseWriter, r *http.Request)](#handleslackslashcommand-w-httpresponsewriter--r--httprequest-)
-    + [handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configuration AutomaticPrMessages)](#handleazuredevopswebhook-w-httpresponsewriter--r--httprequest--configuration-automaticprmessages-)
-    + [reviewersToString(reviewers map[string]bool) string](#reviewerstostring-reviewers-map-string-bool--string)
-    + [deleteThreadMessages(slackAccessToken, channelID string, messages []slack.Message) error](#deletethreadmessages-slackaccesstoken--channelid-string--messages---slackmessage--error)
-    + [getThreadMessages(slackAccessToken, channelID, parentTimestamp string) ([]slack.Message, error)](#getthreadmessages-slackaccesstoken--channelid--parenttimestamp-string-----slackmessage--error-)
-    + [monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)](#monitorpr-azuredevopsorganization--azuredevopsproject--repositoryname--parentmessagets--prid--prlink--userid--channelid-string-)
-  * [What's next?](#what-s-next-)
-  * [Disclaimers](#disclaimers)
-
+- [Overview](#overview)
+  * [Intro](#intro)
+  * [The Idea](#the-idea)
+  * [Features](#features)
+- [Slack bot Setup](#slack-bot-setup)
+  * [Basic Information](#basic-information)
+  * [Slash Commands](#slash-commands)
+  * [OAuth & Permissions](#oauth---permissions)
+- [Azure Devops Webhook Setup](#azure-devops-webhook-setup)
+  * [Do You Need This?](#do-you-need-this-)
+  * [Setting up your webhook](#setting-up-your-webhook)
+- [Slack Notifactions](#slack-notifactions)
+  * [The Initial Message](#the-initial-message)
+  * [Automatic PR Message](#automatic-pr-message)
+  * [A Comment Has Been Made](#a-comment-has-been-made)
+  * [PR Has Been Approved](#pr-has-been-approved)
+  * [PR Has Been Declined](#pr-has-been-declined)
+  * [PR Has Been Approved & Declined](#pr-has-been-approved---declined)
+  * [PR State Has Changed](#pr-state-has-changed)
+  * [Adding Member To Already Tracked PR](#adding-member-to-already-tracked-pr)
+  * [Adding Member To Auto Tracked PR With No Auto Followers](#adding-member-to-auto-tracked-pr-with-no-auto-followers)
+  * [What a Flow Could Look Like](#what-a-flow-could-look-like)
+- [Console](#console)
+  * [Starting The Application](#starting-the-application)
+  * [Tracking PR](#tracking-pr)
+  * [PR Has Changes](#pr-has-changes)
+  * [PR Deleting Messages](#pr-deleting-messages)
+  * [Automatic PR Setup](#automatic-pr-setup)
+  * [PR Automatically Added Via Webhook](#pr-automatically-added-via-webhook)
+  * [No Automatic Jobs](#no-automatic-jobs)
+- [Code](#code)
+  * [Consts](#consts)
+  * [Vars](#vars)
+- [Code - Setup options](#code---setup-options)
+  * [Delete Messages Once PR Isn't Active](#delete-messages-once-pr-isn-t-active)
+  * [Cron For Summary Message](#cron-for-summary-message)
+  * [Automatic PR Messages Per Project](#automatic-pr-messages-per-project)
+- [Code - Functions](#code---functions)
+  * [main()](#main--)
+  * [makeMentionList(users []string) string {](#makementionlist-users---string--string--)
+  * [fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error)](#fetchcommentsfromazuredevops-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string-----comment--error-)
+  * [getPullRequest(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (*PullRequest, error)](#getpullrequest-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string----pullrequest--error-)
+  * [getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) (status string)](#getpullrequeststatus-azuredevopsorganization--azuredevopsproject--repositoryname--prid-string---status-string-)
+  * [sendSlackMessage(slackAccessToken, channelID, message, messageTs, userId string, postEphemeral bool) (message_ts string)](#sendslackmessage-slackaccesstoken--channelid--message--messagets--userid-string--postephemeral-bool---message-ts-string-)
+  * [postActivePRsMessage(activePrs map[string]bool, azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#postactiveprsmessage-activeprs-map-string-bool--azuredevopsorganization--azuredevopsproject--repositoryname-string-)
+  * [startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName string)](#startcron-azuredevopsorganization--azuredevopsproject--repositoryname-string-)
+  * [handleSlackSlashCommand(w http.ResponseWriter, r *http.Request)](#handleslackslashcommand-w-httpresponsewriter--r--httprequest-)
+  * [handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configuration AutomaticPrMessages)](#handleazuredevopswebhook-w-httpresponsewriter--r--httprequest--configuration-automaticprmessages-)
+  * [reviewersToString(reviewers map[string]bool) string](#reviewerstostring-reviewers-map-string-bool--string)
+  * [deleteThreadMessages(slackAccessToken, channelID string, messages []slack.Message) error](#deletethreadmessages-slackaccesstoken--channelid-string--messages---slackmessage--error)
+  * [getThreadMessages(slackAccessToken, channelID, parentTimestamp string) ([]slack.Message, error)](#getthreadmessages-slackaccesstoken--channelid--parenttimestamp-string-----slackmessage--error-)
+  * [monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)](#monitorpr-azuredevopsorganization--azuredevopsproject--repositoryname--parentmessagets--prid--prlink--userid--channelid-string-)
+  * [azureWebhookIterateOverChannelsAndUsers(channels []string, users []string, azureDevOpsOrganization string, azureDevOpsProject string, prlink string, prtitle string, prid string, projectname string, reponame string, createdby string)](#azurewebhookiterateoverchannelsandusers-channels---string--users---string--azuredevopsorganization-string--azuredevopsproject-string--prlink-string--prtitle-string--prid-string--projectname-string--reponame-string--createdby-string-)
+- [What's next?](#what-s-next-)
+- [Disclaimers](#disclaimers)
 
 ## Overview
 ### Intro
@@ -69,7 +70,9 @@ Starting off the idea was just to have some notifactions for the bot to post mes
 - Notifactions on any new reviewers, or reviewers changing their review
 - Delete all thread messages + parent message once PR is no longer active (if desired)
 - If a user has requested to track a PR that is already being tracked, it will @ them in slack with any new updates
-- Automically track PRs created via AzureDevops webhooks per project
+- Automically track PRs created via AzureDevops webhooks per project, add specific repo configuration if desired 
+- Allow multiple channels / auto mentions per project configuration / specific repo configuration
+- Allow no mentions on auto tracked PRs 
 ## Slack bot Setup
 There's a few different items you will need to get this going
 ### Basic Information
@@ -128,6 +131,9 @@ A notifaction for when the **PR state** is **changed**. Sends a notifaction to t
 ### Adding Member To Already Tracked PR
 This one is a little different. If the PR is **already being tracked**, it sends a **ephemeral message** to the requestee that it's already being tracked, but they will get further notifactions for that PR. We can see that they are now being mentioned in the thread.
 ![alreadyTrackedMessage](assets/prAddingMembersToTrackedList.png)
+### Adding Member To Auto Tracked PR With No Auto Followers
+If the requestee isn't in the list of auto mentions for the auto PR configuration, they can still track it
+![noAutoFollowers](assets/prAutoAddingUser.png)
 ### What a Flow Could Look Like
 As we can see below, we have a PR which followed the flow
 - Kieran James **approves**
@@ -236,8 +242,14 @@ if len(configuration.Projects) > 0 {
     fmt.Println("-------------------\n[GLOBAL] Automatic PR configuration below")
     for key, value := range configuration.Projects {
         fmt.Println("-------------------\nProject:", key)
-        fmt.Println("ChannelId:", value.ChannelId)
-        fmt.Println("SlackUserID:", value.SlackUserID)
+        fmt.Println("ChannelIds:", value.ChannelIds)
+        fmt.Println("SlackUserIDs:", value.SlackUserIDs)
+        for key, value := range value.SpecificRepos {
+            fmt.Println("Repo:", key)
+            fmt.Println("	ChannelIds:", value.ChannelIds)
+            fmt.Println("	SlackUserIds:", value.SlackUserIDs)
+        }
+
     }
     fmt.Println("-------------------")
 } else {
@@ -253,6 +265,20 @@ fmt.Println("[GLOBAL] Server listening on port 80...")
 http.ListenAndServe(":80", nil)
 ```
 Calls and serves traffic based on the /slack/pr, and /azuredevops endpoint. This also calls the relvant function hitting the `handleSlackSlashCommand` and `handleAzureDevopsWebhooks`. This also opens and scans for any automatic PRs in the `automatic_prs.json` file.
+
+Outputs logging based on auto PR creations also.
+
+### makeMentionList(users []string) string {
+```
+	var list strings.Builder
+	for _, user := range users {
+		user = fmt.Sprintf("<@%s>", user)
+		list.WriteString(user)
+	}
+	return list.String()
+}
+```
+Create a connection list of slack user IDs and output as one string to use in a slack message
 
 ### fetchCommentsFromAzureDevOps(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID string) ([]Comment, error) 
 ```
@@ -533,7 +559,7 @@ if !isCronRunning {
 }
 
 // loop until PR isn't active anymore
-go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("user_id"), r.FormValue("channel_id"))
+go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("channel_id"))
 ```
 Check if the **cron** is running. If it isn't, start it. Finally, **start a process to monitor the PR**.
 ### handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configuration AutomaticPrMessages)
@@ -549,68 +575,40 @@ if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
     return
 }
 
-//fmt.Printf("WebhookData: %+v\n", data)
 w.WriteHeader(http.StatusOK)
 
 // Extract the desired information
 fmt.Println("[GLOBAL] Received webhook from Azure Devops matching Project:", data.Resource.Repository.Project)
 projectName := data.Resource.Repository.Project.Name
-```
-Ensure webhook is received correct and confirm what log what project the webhook came from.
-```
-for key, project := range configuration.Projects {
-		if projectName == key {
-			fmt.Printf("[GLOBAL] Project name matched with %s: %+v\n", key, project)
-			parts := strings.Split(data.Resource.Repository.WebURL, "/")
-			azureDevOpsOrganization := parts[3]
-			azureDevOpsProject := parts[4]
-			repositoryName := parts[6]
-            ... }
-        ...}
-```
-Grab the webURL from the webhook containing the repo URL, and grab the needed variables azureDevOpsOrganization, azureDevOpsProject and repositoryName from that
-```
-prID := strconv.Itoa(data.Resource.PullRequestID)
-channelId := project.ChannelId
-userId := project.SlackUserID
-key := fmt.Sprintf("%s_%s", prID, channelId)
-mutex.Lock()
-activeMonitoring[key] = true
-mutex.Unlock()
 
-userAlreadyInterested := false
-for _, user_ID := range interestedUsers[prID] {
-    if user_ID == userId {
-        userAlreadyInterested = true
+// Iterate through the project keys and check if the project name matches
+for key, project := range configuration.Projects {
+    if projectName == key {
+        fmt.Printf("[GLOBAL] Project name matched with %s: %+v\n", key, project)
+        parts := strings.Split(data.Resource.Repository.WebURL, "/")
+        azureDevOpsOrganization := parts[3]
+        azureDevOpsProject := parts[4]
+        repositoryName := parts[6]
+        prID := strconv.Itoa(data.Resource.PullRequestID)
+        prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
+
+        if len(project.SpecificRepos) == 0 {
+            azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+        } else {
+            for key, repo := range project.SpecificRepos {
+                if key == repositoryName {
+                    azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+                } else {
+                    azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+                }
+            }
+        }
     }
 }
-
-if !userAlreadyInterested {
-    interestedUsers[prID] = append(interestedUsers[prID], userId)
-}
-
-prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
-firstMessage := fmt.Sprintf("<@%s> New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
-    userId,
-    prLink,
-    data.Resource.PrTitle,
-    projectName,
-    data.Resource.Repository.Name,
-    data.Resource.CreatedBy.DisplayName,
-)
-parentMessageTs := sendSlackMessage(slackAccessToken, channelId, firstMessage, "", "", false)
-
-// Only start cron if it's not running.
-if !isCronRunning {
-    cronOnce.Do(func() {
-        startCron(azureDevOpsOrganization, azureDevOpsProject, repositoryName)
-    })
-}
-
-// loop until PR isn't active anymore
-go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId)
 ```
-Setup the variables needed for the message into the channel. This will grab the user_id and channel_id from the JSON file matching on the project name. It will add the user into the userAlreadyInterested map to ensure they can't re-add it and start monitoring the PR
+Grab the webURL from the webhook containing the repo URL, and grab the needed variables azureDevOpsOrganization, azureDevOpsProject and repositoryName from that. Loop over each project in the configuration passed in made up from the JSON file and find the process to follow. 
+
+Depending if the configuration contains specific repos, blank users etc, it will pass in different options to the function `azureWebhookIterateOverChannelsAndUsers`
 
 ### reviewersToString(reviewers map[string]bool) string 
 ```
@@ -651,7 +649,7 @@ Iterate through message IDs within a channel and delete them
 ```
 Get all thread messages within a conversation using the channel ID and parent message timestamp. Output for use
 
-### monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, userId, channelId string)
+### monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, channelId string)
 ```
 ticker := time.NewTicker(1 * time.Minute)
 
@@ -684,6 +682,7 @@ interestedUserIDs := interestedUsers[prID]
 mentionText := ""
 for _, userID := range interestedUserIDs {
     mentionText += fmt.Sprintf("<@%s>", userID)
+    mentionText = strings.ReplaceAll(mentionText, "<@>", "")
 }
 ```
 Setup the **mentionText** variable to get an update list of users to mention
@@ -826,6 +825,59 @@ if approvedChanged || declinedChanged {
 }
 ```
 If any of the reviews have changed, send an updated list to the thread
+
+### azureWebhookIterateOverChannelsAndUsers(channels []string, users []string, azureDevOpsOrganization string, azureDevOpsProject string, prlink string, prtitle string, prid string, projectname string, reponame string, createdby string)
+```
+mentions := makeMentionList(users)
+for _, channel := range channels {
+    key := fmt.Sprintf("%s_%s", prid, channel)
+    mutex.Lock()
+    activeMonitoring[key] = true
+    mutex.Unlock()
+    for _, user := range users {
+        userAlreadyInterested := false
+        for _, user_ID := range interestedUsers[prid] {
+            if user_ID == user {
+                userAlreadyInterested = true
+            }
+        }
+
+        if !userAlreadyInterested {
+            interestedUsers[prid] = append(interestedUsers[prid], user)
+        }
+    }
+    var firstmessage string
+    if mentions == "" {
+        firstmessage = fmt.Sprintf("%s New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+            mentions,
+            prlink,
+            prtitle,
+            projectname,
+            reponame,
+            createdby,
+        )
+    } else {
+        firstmessage = fmt.Sprintf("New PR '<%s|*%s*>' has been created in *%s/%s* by %s",
+            prlink,
+            prtitle,
+            projectname,
+            reponame,
+            createdby,
+        )
+    }
+
+    parentMessageTs := sendSlackMessage(slackAccessToken, channel, firstmessage, "", "", false)
+
+    if !isCronRunning {
+        cronOnce.Do(func() {
+            startCron(azureDevOpsOrganization, azureDevOpsProject, reponame)
+        })
+    }
+
+    go monitorPr(azureDevOpsOrganization, azureDevOpsProject, reponame, parentMessageTs, prid, prlink, channel)
+}
+```
+Create the mention list from pased in user list, for each channel, and all users (if users are passed in), add the key for each channel > prid. Send a message to each channel in list, and mention the user(s) if present.
 
 ## What's next?
 - Containerisation of the application
