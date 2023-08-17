@@ -317,8 +317,8 @@ if len(configuration.Projects) > 0 {
         fmt.Println("SlackUserIDs:", value.SlackUserIDs)
         for key, value := range value.SpecificRepos {
             fmt.Println("Repo:", key)
-            fmt.Println("	ChannelIds:", value.ChannelIds)
-            fmt.Println("	SlackUserIds:", value.SlackUserIDs)
+            fmt.Println("-ChannelIds:", value.ChannelIds)
+            fmt.Println("-SlackUserIds:", value.SlackUserIDs)
         }
 
     }
