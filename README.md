@@ -680,7 +680,7 @@ for key, project := range configuration.Projects {
                     if key == repositoryName {
                         azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
                     } else {
-                        fmt.Println(fmt.Sprintf("[GLOBAL] PR passed in on repo; %s, but not key was found", repositoryName))
+                        fmt.Println(fmt.Sprintf("[GLOBAL] PR passed in on repo; %s, but no matching key was found", repositoryName))
                     }
                 }
             } else {
