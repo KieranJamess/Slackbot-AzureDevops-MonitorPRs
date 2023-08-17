@@ -9,6 +9,12 @@
 - [Azure Devops Webhook Setup](#azure-devops-webhook-setup)
   * [Do You Need This?](#do-you-need-this-)
   * [Setting up your webhook](#setting-up-your-webhook)
+- [automatic_prs.json setup](#automatic-prsjson-setup)
+  * [No automatic PRS](#no-automatic-prs)
+  * [Track all repos to 2 channels, and message one user](#track-all-repos-to-2-channels--and-message-one-user)
+  * [Only track 1 repo through the whole project](#only-track-1-repo-through-the-whole-project)
+  * [Don't mention anyone on the auto tracked PRs](#don-t-mention-anyone-on-the-auto-tracked-prs)
+  * [A fully complete file example](#a-fully-complete-file-example)
 - [Slack Notifactions](#slack-notifactions)
   * [The Initial Message](#the-initial-message)
   * [Automatic PR Message](#automatic-pr-message)
@@ -58,6 +64,7 @@ Starting off the idea was just to have some notifactions for the bot to post mes
 - Automically track PRs created via AzureDevops webhooks per project, add specific repo configuration if desired 
 - Allow multiple channels / auto mentions per project configuration / specific repo configuration
 - Allow no mentions on auto tracked PRs 
+- Track only one repo
 ## Slack bot Setup
 There's a few different items you will need to get this going
 ### Basic Information
@@ -91,6 +98,85 @@ Set your trigger on PR Created and customize here if you wish
 Set the URL to the **webhookUrl/azuredevops**
 ![azureDevopsWebhooksAdd4](assets/azureDevopsWebhooksAdd4.png)
 
+## automatic_prs.json setup
+### No automatic PRS
+```
+
+```
+You can leave the file blank
+### Track all repos to 2 channels, and message one user
+```
+{
+    "AutomaticPrMessages": {
+        "AzureDevopsProjectName": {
+            "ChannelIds": ["C05LMF2F6DD","C05LMF2F6DE"],
+            "SlackUserIds": ["U05L7M4L939"],
+        }
+    }
+}
+```
+### Only track 1 repo through the whole project
+```
+{
+    "AutomaticPrMessages": {
+        "IOnlyWantToTrackOneRepo": {
+            "ChannelIds": [],
+            "SlackUserIds": [],
+            "SpecificRepos": {
+                "MySuperImportantRepo":{
+                    "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
+                    "SlackUserIds":["U05L7M4L939"]
+                }
+            }
+        }
+    }
+}
+```
+You can leave the `SlackUserIds` and `ChannelIds` blank
+### Don't mention anyone on the auto tracked PRs
+```
+{
+    "AutomaticPrMessages": {
+        "AzureDevopsProjectName": {
+            "ChannelIds": ["C05LMF2F6DD","C05LMF2F6DE"],
+            "SlackUserIds": [],
+        }
+    }
+}
+```
+Leaving the `SlackUserIds` will only post a message without mentioning anyone
+### A fully complete file example
+```
+{
+    "AutomaticPrMessages": {
+        "AzureDevopsProjectName": {
+            "ChannelIds": ["C05LMF2F6DD"],
+            "SlackUserIds": ["U05L7M4L939"],
+            "SpecificRepos": {
+                "MyRepoName":{
+                    "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
+                    "SlackUserIds":[]
+                }
+            }
+        },
+        "Go": {
+            "ChannelIds": ["C05M28DMM43"],
+            "SlackUserIds": ["U05L7M4L939","UD1QZGTSS"]
+        },
+        "IOnlyWantToTrackOneRepo": {
+            "ChannelIds": [],
+            "SlackUserIds": [],
+            "SpecificRepos": {
+                "MySuperImportantRepo":{
+                    "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
+                    "SlackUserIds":["U05L7M4L939"]
+                }
+            }
+        }
+    }
+}
+
+```
 ## Slack Notifactions
 ### The Initial Message
 When we start tracking a PR there is a notifaction to the channel stating that the PR is being tracked. Also the requestee gets a ephemeral message that the request is being processed
@@ -576,16 +662,29 @@ for key, project := range configuration.Projects {
         repositoryName := parts[6]
         prID := strconv.Itoa(data.Resource.PullRequestID)
         prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
-
-        if len(project.SpecificRepos) == 0 {
-            azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
-        } else {
-            for key, repo := range project.SpecificRepos {
-                if key == repositoryName {
-                    azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
-                } else {
-                    azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+        if len(project.ChannelIds) != 0 {
+            if len(project.SpecificRepos) == 0 {
+                azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+            } else {
+                for key, repo := range project.SpecificRepos {
+                    if key == repositoryName {
+                        azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+                    } else {
+                        azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+                    }
                 }
+            }
+        } else {
+            if len(project.SpecificRepos) != 0 {
+                for key, repo := range project.SpecificRepos {
+                    if key == repositoryName {
+                        azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+                    } else {
+                        fmt.Println(fmt.Sprintf("[GLOBAL] PR passed in on repo; %s, but not key was found", repositoryName))
+                    }
+                }
+            } else {
+                fmt.Println("[GLOBAL] No specific repos or default channel ID set")
             }
         }
     }

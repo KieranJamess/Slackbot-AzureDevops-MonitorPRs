@@ -6,13 +6,23 @@
             "SpecificRepos": {
                 "MyRepoName":{
                     "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
-                    "SlackUserIds":[""]
+                    "SlackUserIds":[]
                 }
             }
         },
         "Go": {
             "ChannelIds": ["C05M28DMM43"],
             "SlackUserIds": ["U05L7M4L939","UD1QZGTSS"]
+        },
+        "IOnlyWantToTrackOneRepo": {
+            "ChannelIds": [],
+            "SlackUserIds": [],
+            "SpecificRepos": {
+                "MySuperImportantRepo":{
+                    "ChannelIds": ["C05LMF2F6DD","C05M28DMM43"],
+                    "SlackUserIds":["U05L7M4L939"]
+                }
+            }
         }
     }
 }

@@ -662,16 +662,29 @@ func handleAzureDevopsWebhook(w http.ResponseWriter, r *http.Request, configurat
 			repositoryName := parts[6]
 			prID := strconv.Itoa(data.Resource.PullRequestID)
 			prLink := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%s", azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID)
-
-			if len(project.SpecificRepos) == 0 {
-				azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
-			} else {
-				for key, repo := range project.SpecificRepos {
-					if key == repositoryName {
-						azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
-					} else {
-						azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+			if len(project.ChannelIds) != 0 {
+				if len(project.SpecificRepos) == 0 {
+					azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+				} else {
+					for key, repo := range project.SpecificRepos {
+						if key == repositoryName {
+							azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+						} else {
+							azureWebhookIterateOverChannelsAndUsers(project.ChannelIds, project.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+						}
 					}
+				}
+			} else {
+				if len(project.SpecificRepos) != 0 {
+					for key, repo := range project.SpecificRepos {
+						if key == repositoryName {
+							azureWebhookIterateOverChannelsAndUsers(repo.ChannelIds, repo.SlackUserIDs, azureDevOpsOrganization, azureDevOpsProject, prLink, data.Resource.PrTitle, prID, projectName, data.Resource.Repository.Name, data.Resource.CreatedBy.DisplayName)
+						} else {
+							fmt.Println(fmt.Sprintf("[GLOBAL] PR passed in on repo; %s, but not key was found", repositoryName))
+						}
+					}
+				} else {
+					fmt.Println("[GLOBAL] No specific repos or default channel ID set")
 				}
 			}
 		}
