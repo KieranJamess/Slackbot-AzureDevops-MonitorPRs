@@ -364,11 +364,12 @@ func handleSlackSlashCommand(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// loop until PR isn't active anymore
-		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("channel_id"))
+		stopChannel := make(chan struct{})
+		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, r.FormValue("channel_id"), stopChannel)
 	}
 }
 
-func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, channelId string) {
+func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, parentMessageTs, prID, prLink, channelId string, stopChannel chan struct{}) {
 	// Set a timer for each minute
 	ticker := time.NewTicker(1 * time.Minute)
 
@@ -403,6 +404,7 @@ func monitorPr(azureDevOpsOrganization, azureDevOpsProject, repositoryName, pare
 		fmt.Println(prefix, "Checking for changes")
 		// Check if PR is still active here, if not, send message to thread to confirm PR has been completed
 		if status := getPullRequestStatus(azureDevOpsOrganization, azureDevOpsProject, repositoryName, prID); status != "active" {
+			close(stopChannel)
 			mutex.Lock()
 			key := fmt.Sprintf("%s_%s", prID, channelId)
 			delete(activeMonitoring, key)
@@ -739,7 +741,9 @@ func azureWebhookIterateOverChannelsAndUsers(channels []string, users []string, 
 			})
 		}
 
-		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, reponame, parentMessageTs, prid, prlink, channel)
+		// loop until PR isn't active anymore
+		stopChannel := make(chan struct{})
+		go monitorPr(azureDevOpsOrganization, azureDevOpsProject, reponame, parentMessageTs, prid, prlink, channel, stopChannel)
 	}
 }
 
